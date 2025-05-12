@@ -28,7 +28,7 @@ async fn main() -> Result<(), reqwest::Error> {
     let file = "./relays.yaml";
     let relays = load_file(file).unwrap();
     // Nip you are looking for on relays
-    let nip = 33;
+    let nip = 0;
 
     let client = reqwest::Client::new();
     let bodies = stream::iter(relays)
@@ -43,6 +43,7 @@ async fn main() -> Result<(), reqwest::Error> {
                 let text = resp.text().await?;
 
                 let r: Result<(String, String), reqwest::Error> = Ok((url, text));
+                println!("{:?}", r);
 
                 r
             }
