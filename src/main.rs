@@ -110,7 +110,7 @@ async fn main() -> Result<(), reqwest::Error> {
                     && !url.contains(".local")
                 //we want a view of the network
                 {
-                    print!("{} ", url.clone());
+                    //print!("{} ", url.clone());
                 }
                 r
             }
@@ -124,7 +124,7 @@ async fn main() -> Result<(), reqwest::Error> {
                 if let Ok(json) = data {
                     for n in &json.supported_nips {
                         if n == &nip {
-                            println!("{nip}/{}", url);
+                            println!("{nip}/{}", url.replace("https://", ""));
                         }
                     }
                 }
