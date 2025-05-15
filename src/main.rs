@@ -7,7 +7,7 @@ use std::{
     io::{self, BufRead, BufReader},
     path::Path,
 };
-use tracing::debug;
+use tracing::{debug, error, info};
 
 const CONCURRENT_REQUESTS: usize = 16;
 
@@ -133,7 +133,7 @@ async fn main() -> Result<(), reqwest::Error> {
                             debug!("version:{:?}", &json.version);
 
                             // Example: Create a directory
-                            let dir_name = String::from(format!("{}", nip.clone().to_string()));
+                            let dir_name = String::from(format!("{}", nip.clone().to_string()).replace("https://",""));
                             let path = Path::new(&dir_name);
 
                             if !path.exists() {
@@ -143,6 +143,28 @@ async fn main() -> Result<(), reqwest::Error> {
                                 }
                             } else {
                                 debug!("{dir_name} already exists...");
+                            }
+
+                            let file_path = path.join(url.clone());
+                            println!("file_path:{}",
+                                file_path.display()
+                                .to_string()
+                                .replace("https://","")
+                                );
+                            let path = Path::new(&file_path);
+
+                            use std::io::Write;
+                            match std::fs::File::create(path) {
+                                Ok(mut file) => {
+                                    println!("File created: {}", path.display());
+                                    match file.write_all(
+                                        b"Hello, world!\nThis is some text written to the file.",
+                                    ) {
+                                        Ok(_) => info!("Successfully wrote to the file."),
+                                        Err(e) => error!("Failed to write to the file: {}", e),
+                                    }
+                                }
+                                Err(e) => error!("Failed to create file: {}", e),
                             }
 
                             println!("{nip}/{}", url.replace("https://", ""));
