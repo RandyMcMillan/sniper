@@ -1,10 +1,10 @@
 use futures::{stream, StreamExt};
 use reqwest::header::ACCEPT;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
+use std::fs;
 use std::{
     env,
-    io::{self, BufRead, BufReader},
+    io::{self, BufRead, BufReader, Write},
     path::Path,
 };
 use tracing::{debug, error, info};
@@ -22,7 +22,7 @@ struct Relay {
 }
 
 fn load_file(filename: impl AsRef<Path>) -> io::Result<Vec<String>> {
-    BufReader::new(File::open(filename)?).lines().collect()
+    BufReader::new(fs::File::open(filename)?).lines().collect()
 }
 
 #[tokio::main]
@@ -34,9 +34,7 @@ async fn main() -> Result<(), reqwest::Error> {
 
         match first_argument.parse::<i32>() {
             Ok(number) => {
-                //println!("First argument as i32: {}", number);
                 nip = number;
-                //println!("First argument as i32: {}", nip);
             }
             Err(e) => {
                 eprintln!("Error converting first argument to i32: {}", e);
@@ -80,12 +78,6 @@ async fn main() -> Result<(), reqwest::Error> {
                     && !url.contains("utxo")
                     && !url.contains("relay.lexingtonbitcoin.org")
                     && !url.contains("nostr.info")
-                    && !url.contains("nostr.info")
-                    && !url.contains("nostr.info")
-                    && !url.contains("nostr.info")
-                    && !url.contains("nostr.info")
-                    && !url.contains("nostr.info")
-                    && !url.contains("nostr.info")
                     && !url.contains("nostr.band")
                     && !url.contains("bitcoin.ninja")
                     && !url.contains("brb.io")
@@ -109,10 +101,8 @@ async fn main() -> Result<(), reqwest::Error> {
                     && !url.contains("nostrid")
                     && !url.contains("damus.io")
                     && !url.contains(".local")
-                //we want a view of the network
                 {
-                    //print!("{} ", url.clone());
-                    //print!("{} ", text.clone());
+                    //we want a view of the network
                 }
                 r
             }
@@ -123,21 +113,20 @@ async fn main() -> Result<(), reqwest::Error> {
         .for_each(|b| async {
             if let Ok((url, json)) = b {
                 let data: Result<Relay, serde_json::Error> = serde_json::from_str(&json);
-                if let Ok(json) = data {
-                    for n in &json.supported_nips {
+                if let Ok(relay_info) = data {
+                    for n in &relay_info.supported_nips {
                         if n == &nip.clone() {
-                            debug!("contact:{:?}", &json.contact);
-                            debug!("description:{:?}", &json.description);
-                            debug!("name:{:?}", &json.name);
-                            debug!("software:{:?}", &json.software);
-                            debug!("version:{:?}", &json.version);
+                            debug!("contact:{:?}", &relay_info.contact);
+                            debug!("description:{:?}", &relay_info.description);
+                            debug!("name:{:?}", &relay_info.name);
+                            debug!("software:{:?}", &relay_info.software);
+                            debug!("version:{:?}", &relay_info.version);
 
-                            // Example: Create a directory
-                            let dir_name = String::from(format!("{}", nip.clone().to_string()).replace("https://",""));
+                            let dir_name = format!("{}", nip);
                             let path = Path::new(&dir_name);
 
                             if !path.exists() {
-                                match std::fs::create_dir(path) {
+                                match fs::create_dir(path) {
                                     Ok(_) => println!("Created directory: {}", nip),
                                     Err(e) => eprintln!("Error creating directory: {}", e),
                                 }
@@ -145,29 +134,28 @@ async fn main() -> Result<(), reqwest::Error> {
                                 debug!("{dir_name} already exists...");
                             }
 
-                            let file_path = path.join(url.clone());
-                            println!("file_path:{}",
-                                file_path.display()
-                                .to_string()
-                                .replace("https://","")
-                                );
-                            let path = Path::new(&file_path);
+                            let file_name = url.replace("https://", "").replace("/", "_") + ".json";
+                            let file_path = path.join(&file_name);
+                            let file_path_str = file_path.display().to_string();
+                            println!("file_path: {}", file_path_str);
 
-                            use std::io::Write;
-                            match std::fs::File::create(path) {
+                            match fs::File::create(&file_path) {
                                 Ok(mut file) => {
-                                    println!("File created: {}", path.display());
-                                    match file.write_all(
-                                        b"Hello, world!\nThis is some text written to the file.",
-                                    ) {
-                                        Ok(_) => info!("Successfully wrote to the file."),
-                                        Err(e) => error!("Failed to write to the file: {}", e),
+                                    println!("File created: {}", &file_path_str);
+                                    match file.write_all(json.as_bytes()) {
+                                        Ok(_) => info!(
+                                            "Successfully wrote relay info to {}",
+                                            &file_path_str
+                                        ),
+                                        Err(e) => {
+                                            error!("Failed to write to {}: {}", &file_path_str, e)
+                                        }
                                     }
                                 }
-                                Err(e) => error!("Failed to create file: {}", e),
+                                Err(e) => error!("Failed to create file {}: {}", &file_path_str, e),
                             }
 
-                            println!("{nip}/{}", url.replace("https://", ""));
+                            println!("{}/{}", nip, url.replace("https://", ""));
                         }
                     }
                 }
