@@ -7,6 +7,7 @@ use std::{
     io::{self, BufRead, BufReader},
     path::Path,
 };
+use tracing::debug;
 
 const CONCURRENT_REQUESTS: usize = 16;
 
@@ -111,6 +112,7 @@ async fn main() -> Result<(), reqwest::Error> {
                 //we want a view of the network
                 {
                     //print!("{} ", url.clone());
+                    //print!("{} ", text.clone());
                 }
                 r
             }
@@ -123,7 +125,26 @@ async fn main() -> Result<(), reqwest::Error> {
                 let data: Result<Relay, serde_json::Error> = serde_json::from_str(&json);
                 if let Ok(json) = data {
                     for n in &json.supported_nips {
-                        if n == &nip {
+                        if n == &nip.clone() {
+                            debug!("contact:{:?}", &json.contact);
+                            debug!("description:{:?}", &json.description);
+                            debug!("name:{:?}", &json.name);
+                            debug!("software:{:?}", &json.software);
+                            debug!("version:{:?}", &json.version);
+
+                            // Example: Create a directory
+                            let dir_name = String::from(format!("{}", nip.clone().to_string()));
+                            let path = Path::new(&dir_name);
+
+                            if !path.exists() {
+                                match std::fs::create_dir(path) {
+                                    Ok(_) => println!("Created directory: {}", nip),
+                                    Err(e) => eprintln!("Error creating directory: {}", e),
+                                }
+                            } else {
+                                debug!("{dir_name} already exists...");
+                            }
+
                             println!("{nip}/{}", url.replace("https://", ""));
                         }
                     }
